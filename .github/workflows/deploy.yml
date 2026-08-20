@@ -1,0 +1,67 @@
+name: Deploy docs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Lets you run this manually from the Actions tab.
+  workflow_dispatch:
+
+# Needed by actions/deploy-pages to publish and to mint the OIDC token.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; don't cancel a run that's mid-publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Directory holding the Fumadocs app. Change this if you move or rename it.
+  APP_DIR: dev-docs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Exposes steps.pages.outputs.base_path ("/<repo>", or "" for a
+      # user/org site or custom domain) and base_url (the full site URL),
+      # so the same workflow works in any repo without editing it.
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Build static site
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
+        # --webpack avoids Turbopack's prebuilt native binary, which needs
+        # GLIBC_2.29+ and fails on older Linux distributions.
+        run: bun run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.APP_DIR }}/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
