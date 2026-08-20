@@ -28,7 +28,7 @@ jobs:
       run:
         working-directory: ${{ env.APP_DIR }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -42,7 +42,7 @@ jobs:
       # so the same workflow works in any repo without editing it.
       - name: Configure GitHub Pages
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Build static site
         env:
@@ -52,7 +52,7 @@ jobs:
         # GLIBC_2.29+ and fails on older Linux distributions.
         run: bun run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ env.APP_DIR }}/out
 
@@ -63,5 +63,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # On GitHub Enterprise Server, check the action's compatibility table and
+      # pin an older major if your GHES version needs one:
+      # https://github.com/actions/deploy-pages#compatibility
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
